@@ -46,7 +46,9 @@ from queue import Queue
 
 from cassandra import OperationTimedOut
 from cassandra.cluster import Cluster, DefaultConnection
-from cassandra.cqltypes import ReversedType, UserType, VarcharType
+from cassandra.cqltypes import ReversedType, UserType, DecimalType, BooleanType, FloatType, DoubleType, \
+    LongType, Int32Type, InetAddressType, TimestampType, TimeUUIDType, ShortType, TimeType, VarcharType, \
+    IntegerType, UUIDType
 from cassandra.metadata import protect_name, protect_names, protect_value
 from cassandra.policies import RetryPolicy, WhiteListRoundRobinPolicy, DCAwareRoundRobinPolicy, FallthroughRetryPolicy
 from cassandra.query import BatchStatement, BatchType, SimpleStatement, tuple_factory
@@ -364,7 +366,7 @@ class CopyTask(object):
         copy_options['errfile'] = safe_normpath(opts.pop('errfile', 'import_%s_%s.err' % (self.ks, self.table,)))
         copy_options['ratefile'] = safe_normpath(opts.pop('ratefile', ''))
         copy_options['maxoutputsize'] = int(opts.pop('maxoutputsize', '-1'))
-        copy_options['preparedstatements'] = bool(opts.pop('preparedstatements', 'true').lower() == 'true')
+        copy_options['preparedstatements'] = bool(opts.pop('preparedstatements', 'false').lower() == 'true')
         copy_options['ttl'] = int(opts.pop('ttl', -1))
 
         # Hidden properties, they do not appear in the documentation but can be set in config files
@@ -1424,6 +1426,8 @@ class ChildProcess(mp.Process):
         else:
             self.test_failures = None
         # attributes for coverage
+        self.coverage = params.get('coverage', False)
+        self.coveragerc_path = params.get('coveragerc_path')
         self.coverage_collection = None
         self.sigterm_handler = None
         self.sighup_handler = None
@@ -1844,16 +1848,33 @@ class ImportConversion(object):
 
         if statement is None:
             self.use_prepared_statements = False
-            statement = self._get_primary_key_statement(parent, table_meta)
         else:
             self.use_prepared_statements = True
 
         self.is_counter = parent.is_counter(table_meta)
-        self.proto_version = statement.protocol_version
+        self.proto_version = parent.session.cluster.protocol_version
+
+        self.typename_to_class_map = {
+            'bigint': LongType,
+            'boolean': BooleanType,
+            'decimal': DecimalType,
+            'double': DoubleType,
+            'float': FloatType,
+            'inet': InetAddressType,
+            'int': Int32Type,
+            'smallint': ShortType,
+            'text': VarcharType,
+            'time': TimeType,
+            'timestamp': TimestampType,
+            'timeuuid': TimeUUIDType,
+            'uuid': UUIDType,
+            'varchar': VarcharType,
+            'varint': IntegerType
+        }
 
         # the cql types and converters for the prepared statement, either the full statement or only the primary keys
-        self.cqltypes = [c.type for c in statement.column_metadata]
-        self.converters = [self._get_converter(c.type) for c in statement.column_metadata]
+        self.cqltypes = [self.typename_to_class_map[c.cql_type] for c in table_meta.partition_key]
+        self.converters = [self._get_converter(c) for c in self.cqltypes]
 
         # the cql types for the entire statement, these are the same as the types above but
         # only when using prepared statements
