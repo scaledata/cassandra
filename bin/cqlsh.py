@@ -59,6 +59,11 @@ CASSANDRA_CQL_HTML_FALLBACK = 'https://cassandra.apache.org/doc/cql3/CQL-3.0.htm
 # Suppress all DeprecationWarning messages
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
+# The driver imports numpy, whose OpenBLAS starts one thread per core at load
+# time and burns ~1.5s of CPU per cqlsh run. cqlsh does no BLAS math, so cap it
+# to one thread. Must run before the cassandra import below.
+os.environ.setdefault('OPENBLAS_NUM_THREADS', '1')
+
 # default location of local CQL.html
 if os.path.exists(CASSANDRA_PATH + '/doc/cql3/CQL.html'):
     # default location of local CQL.html
