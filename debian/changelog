@@ -1,5 +1,5 @@
 rubrik-cqlsh (3.0.9-rubrik-28.0) unstable; urgency=medium
-  * Cap OpenBLAS to one thread in cqlsh to cut per-invocation CPU
+  * Skip importing unused driver modules (twisted, eventlet, gevent, numpy) to cut cqlsh startup CPU
 
  -- Ambareesh <ambareesh.jayakumari@rubrik.com>  Fri, 20 Nov 2026 04:22:32 +0000
 rubrik-cqlsh (3.0.9-rubrik-27.0) unstable; urgency=medium
