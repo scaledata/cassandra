@@ -59,6 +59,13 @@ CASSANDRA_CQL_HTML_FALLBACK = 'https://cassandra.apache.org/doc/cql3/CQL-3.0.htm
 # Suppress all DeprecationWarning messages
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
+# The driver eagerly tries its optional reactors (twisted, eventlet, gevent) and
+# the numpy result handler, and falls back when they fail to import. cqlsh uses
+# none of them, and importing them is most of cqlsh's startup CPU. Block them so
+# the driver takes the fallback. Must run before the cassandra import below.
+for _unused in ('twisted', 'eventlet', 'gevent', 'numpy'):
+    sys.modules.setdefault(_unused, None)
+
 # default location of local CQL.html
 if os.path.exists(CASSANDRA_PATH + '/doc/cql3/CQL.html'):
     # default location of local CQL.html
